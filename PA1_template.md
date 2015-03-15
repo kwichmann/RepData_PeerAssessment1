@@ -1,39 +1,49 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
   
 # Introduction
 It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
 ## Loading and preprocessing the data
 The data are found in the zipped file "activity.zip". Unzip it:
-```{r}
+
+```r
 unzip("activity.zip")
 ```
 
 Read the unzipped csv file into a data frame:
 
-```{r}
+
+```r
 amd <- read.csv("activity.csv")
 ```
 Preview the data:
-```{r}
+
+```r
 head(amd)
+```
+
+```
+##   steps       date interval
+## 1    NA 2012-10-01        0
+## 2    NA 2012-10-01        5
+## 3    NA 2012-10-01       10
+## 4    NA 2012-10-01       15
+## 5    NA 2012-10-01       20
+## 6    NA 2012-10-01       25
 ```
 
 ## What is mean total number of steps taken per day?
 Use the dplyr package:
 
-```{r, }
+
+```r
 library(dplyr, warn.conflicts = FALSE)
 ```
 
 Extract the total number of steps by date:
 
-```{r}
+
+```r
 steps_by_date <- amd %>%
   group_by(date) %>%
   summarize(total_steps = sum(steps))
@@ -41,23 +51,36 @@ steps_by_date <- amd %>%
 
 View the corresponding histogram:
 
-```{r}
+
+```r
 hist(steps_by_date$total_steps,
      main = "Distribution of steps pr. day",
      xlab = "Steps pr. day",
      col = "red")
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
 Find the mean number of steps pr. day:
 
-```{r}
+
+```r
 mean(steps_by_date$total_steps, na.rm = TRUE)
+```
+
+```
+## [1] 10766.19
 ```
 
 Find the median number of steps pr. day:
 
-```{r}
+
+```r
 median(steps_by_date$total_steps, na.rm = TRUE)
+```
+
+```
+## [1] 10765
 ```
 
 The mean and median are almost equal, which indicates an approximately symmetric distribution, which is also supported by the histogram above.
@@ -65,7 +88,8 @@ The mean and median are almost equal, which indicates an approximately symmetric
 ## What is the average daily activity pattern?
 Calculate daily average for each activity by day, by first summing over groupings of date/interval and then averaging:
 
-```{r}
+
+```r
 act_pattern <- amd %>%
   group_by(date, interval) %>%
   summarize(total_steps = sum(steps, na.rm = TRUE)) %>%
@@ -75,7 +99,8 @@ act_pattern <- amd %>%
 
 Do note, that the intervals are measured in a "(h)h:mm" format. To we need a function to turn it into minutes. This is achieved using the div (%/%) and modulo (%%) operators:
 
-```{r}
+
+```r
 minute_count <- function(i) {
   (i %/% 100) * 60 + i %% 100
   }
@@ -83,13 +108,15 @@ minute_count <- function(i) {
 
 The minutes function can now be applied to the intervals to yield a new column in the data frame:
 
-```{r}
+
+```r
 act_pattern <- mutate(act_pattern, minutes = minute_count(interval))
 ```
 Finally, a plot can be made:
 
 
-```{r}
+
+```r
 plot(act_pattern$minutes,
      act_pattern$avg_by_interval,
      type = "l",
@@ -98,15 +125,27 @@ plot(act_pattern$minutes,
      ylab = "Average step count by interval")
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-12-1.png) 
+
 Find the position of the maximum activity count using which.max:
-```{r}
+
+```r
 which.max(act_pattern$avg_by_interval)
+```
+
+```
+## [1] 104
 ```
 
 Since the first position corresponds to 0 minutes, the second to 5 minutes and so on, the minute count for the maximum must be:
 
-```{r}
+
+```r
 (which.max(act_pattern$avg_by_interval) - 1) * 5
+```
+
+```
+## [1] 515
 ```
 
 This corresponds to 8:35 am.
@@ -115,8 +154,13 @@ This corresponds to 8:35 am.
 
 Count the total number of NA's in the dataset:
 
-```{r}
+
+```r
 sum(is.na(amd$steps))
+```
+
+```
+## [1] 2304
 ```
 
 This is quite a lot compared to the size of the dataset (17568).
@@ -124,7 +168,8 @@ This is quite a lot compared to the size of the dataset (17568).
 As an attempt to remedy this, let's replace the NA's by the mean value for the time interval (as computed in the last section).  
 Applying the same logic as when finding the maximum, but this time in reverse, the corresponding data entry in the data must be the minute count divided by 5 and adding 1 in the end. Make a data frame with this value included:
 
-```{r}
+
+```r
 amd2 <- mutate(amd,
                interval_avg =
                  act_pattern$avg_by_interval[minute_count(interval)/5 +1])
@@ -132,7 +177,8 @@ amd2 <- mutate(amd,
 
 Make a function that chooses between actual steps value and average value:
 
-```{r}
+
+```r
 choose <- function(steps, avg) {
   if (is.na(steps)) avg else steps
 }
@@ -140,13 +186,15 @@ choose <- function(steps, avg) {
 
 Now apply this function using mapply to make a new column:
 
-```{r}
+
+```r
 steps_padded <- mapply(choose, amd2$steps, amd2$interval_avg)
 ```
 
 Make a new data fram with the padded data:
 
-```{r}
+
+```r
 amd_padded <- cbind(amd, steps_padded) %>%
   select(steps_padded, date, interval)
 ```
@@ -155,7 +203,8 @@ amd_padded <- cbind(amd, steps_padded) %>%
   
 Now we can follow the same steps as in the first section. Extract the total number of steps by date:
 
-```{r}
+
+```r
 steps_by_date <- amd_padded %>%
   group_by(date) %>%
   summarize(total_steps = sum(steps_padded))
@@ -163,23 +212,36 @@ steps_by_date <- amd_padded %>%
 
 View the corresponding histogram:
 
-```{r}
+
+```r
 hist(steps_by_date$total_steps,
      main = "Distribution of steps pr. day (padded)",
      xlab = "Steps pr. day",
      col = "green")
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-21-1.png) 
+
 Find the mean number of steps pr. day:
 
-```{r}
+
+```r
 mean(steps_by_date$total_steps, na.rm = TRUE)
+```
+
+```
+## [1] 10581.01
 ```
 
 Find the median number of steps pr. day:
 
-```{r}
+
+```r
 median(steps_by_date$total_steps, na.rm = TRUE)
+```
+
+```
+## [1] 10395
 ```
 
 Both are lower than the originally calculated values, but the symmetric tendency is intact.
@@ -188,13 +250,22 @@ Both are lower than the originally calculated values, but the symmetric tendency
 
 Make a vector of (English) weekday names:
 
-```{r}
+
+```r
 Sys.setlocale("LC_TIME", "English")
+```
+
+```
+## [1] "English_United States.1252"
+```
+
+```r
 days <- weekdays(as.Date(amd_padded$date))
 ```
 
 Make a function that designates weekdays and weekends:
-```{r}
+
+```r
 day_typ <- function(day) {
   if (day == "Saturday" | day == "Sunday") {
     "weekend"
@@ -205,25 +276,29 @@ day_typ <- function(day) {
 ```
 
 Apply to days vector and turn into factor:
-```{r}
+
+```r
 day_type <- as.factor(sapply(days, day_typ))
 ```
 
 Make data frame:
-```{r}
+
+```r
 amd_day <- cbind(amd_padded, day_type)
 ```
 
 Calculate mean number of steps grouped by interval and type of day:
 
-```{r}
+
+```r
 amd_by_day <- amd_day %>%
   group_by(day_type, interval) %>%
   summarize(mean_steps = mean(steps_padded))
 ```
 
 Use the ggplot2 package to make panel plot:
-```{r}
+
+```r
 library(ggplot2)
 qplot(minute_count(interval), mean_steps,
       data = amd_by_day,
@@ -234,5 +309,7 @@ qplot(minute_count(interval), mean_steps,
       xlab = "Minutes after midnight",
       ylab = "Average steps")
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-29-1.png) 
   
 On weekends, the average numbers of steps is generally lower. In particular, the early observations are drastically reduced.
